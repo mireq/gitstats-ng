@@ -218,6 +218,10 @@ var Selector = function(data) {
 						return function(extensionData) {
 							return extensionData[1];
 						}
+					case "changes":
+						return function(extensionData) {
+							return extensionData[2] + extensionData[3];
+						}
 					default:
 						return function() {
 							return undefined;
@@ -296,7 +300,7 @@ var Selector = function(data) {
 				array_setdefault(stats, xAxis, {});
 				var stat = stats[xAxis];
 
-				if ((this._function === "value" || this._function === "sum") && yAxis !== undefined) {
+				if (this._function === "value" && yAxis !== undefined) {
 					stat[yAxis] = 0;
 				}
 
@@ -740,12 +744,19 @@ function clicked_lines() {
 	create_graph_view("Lines", select, ["project", "extension"], "tsline");
 }
 
+function clicked_changes() {
+	var select = selector.select("changes", "sum");
+	create_graph_view("Changes", select, ["project", "author", "extension"], "ts");
+}
+
 var menu_item_commits = document.getElementById("menu_item_commits");
 menu_item_commits.onclick = function() { clicked_commits(); set_active_class(menu_item_commits); };
 var menu_item_files = document.getElementById("menu_item_files");
 menu_item_files.onclick = function() { clicked_files(); set_active_class(menu_item_files); };
 var menu_item_lines = document.getElementById("menu_item_lines");
 menu_item_lines.onclick = function() { clicked_lines(); set_active_class(menu_item_lines); };
+var menu_item_changes = document.getElementById("menu_item_changes");
+menu_item_changes.onclick = function() { clicked_changes(); set_active_class(menu_item_changes); };
 
 clicked_commits();
 set_active_class(menu_item_commits);
