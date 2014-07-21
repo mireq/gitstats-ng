@@ -220,7 +220,7 @@ var Selector = function(data) {
 						}
 					case "changes":
 						return function(extensionData) {
-							return extensionData[2] + extensionData[3];
+							return [extensionData[2], extensionData[3]];
 						}
 					default:
 						return function() {
@@ -240,9 +240,20 @@ var Selector = function(data) {
 						}
 					case "sum":
 						return function(value, stat, yAxis) {
-							array_setdefault(stat, yAxis, 0);
-							if (value !== null) {
-								stat[yAxis] += value;
+							if (stat[yAxis] === undefined) {
+								stat[yAxis] = value;
+							}
+							else {
+								if (Object.prototype.toString.call(value) === '[object Array]') {
+									for (var i = 0; i < value.length; ++i) {
+										stat[yAxis][i] += value[i];
+									}
+								}
+								else {
+									if (value !== null) {
+										stat[yAxis] += value;
+									}
+								}
 							}
 						}
 					case "value":
@@ -329,6 +340,17 @@ var Selector = function(data) {
 			yAxisKeysArray.push(key);
 		}
 
+		var group = this._group;
+		var axis_data_filter = function(val) { return val; };
+		if (this._column === "changes") {
+			if (yAxisKeysArray.length === 1) {
+				group = "change_type";
+			}
+			else {
+				axis_data_filter = function(val) { return val[0] + val[1]; };
+			}
+		}
+
 		if (this._group_x == "date") {
 			xMin = new Date(xMin);
 			xMax = new Date(xMax);
@@ -353,10 +375,29 @@ var Selector = function(data) {
 			var stat = stats[key];
 			for (var i = 0; i < yAxisKeysArray.length; ++i) {
 				var axis = yAxisKeysArray[i];
-				if (stat[axis] === undefined) {
-					stat[axis] = 0;
+				if (group === "change_type") {
+					if (stat[axis] === undefined) {
+						stat["Added"] = 0;
+						stat["Removed"] = 0;
+					}
+					else {
+						stat["Added"] = stat[axis][0];
+						stat["Removed"] = stat[axis][1];
+					}
+				}
+				else {
+					if (stat[axis] === undefined) {
+						stat[axis] = 0;
+					}
+					else {
+						stat[axis] = axis_data_filter(stat[axis]);
+					}
 				}
 			}
+		}
+
+		if (group === "change_type") {
+			yAxisKeysArray = ["Added", "Removed"];
 		}
 
 		this._cache.stats = stats;
@@ -667,7 +708,7 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 			filter_project(project_filter).
 			filter_author(author_filter).
 			filter_extension(extension_filter).
-			group_y(author_filter === null ? (extension_filter === null ? null : "extension") : "author");
+			group_y(extension_filter === null ? (author_filter === null ? null : "author") : "extension");
 		var dygraph_data = convert_statistics_to_digraph(filtered.materialize());
 		opts.file = dygraph_data.data;
 		opts.labels = dygraph_data.labels;
