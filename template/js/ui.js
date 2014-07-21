@@ -5,6 +5,7 @@ var pageContent = pageBody.getElementsByTagName("SECTION")[0];
 var selectedProjects = [null];
 var selectedAuthors = [null];
 var selectedExtensions = [null];
+var selectedTypes = [null];
 
 var array_setdefault = function(array, key, value) {
 	if (array[key] == undefined) {
@@ -44,6 +45,7 @@ var Selector = function(data) {
 	this._filter_project = null;
 	this._filter_author = null;
 	this._filter_extension = null;
+	this._filter_type = null;
 	this._cache = null;
 
 	var group_x = function(gx) {
@@ -82,6 +84,11 @@ var Selector = function(data) {
 			extension = [extension];
 		}
 		this._filter_extension = extension;
+		return this;
+	}
+
+	var filter_type = function(type) {
+		this._filter_type = type;
 		return this;
 	}
 
@@ -129,6 +136,7 @@ var Selector = function(data) {
 		selector.filter_project = filter_project;
 		selector.filter_author = filter_author;
 		selector.filter_extension = filter_extension;
+		selector.filter_type = filter_type;
 		selector.projects = projects;
 		selector.authors = authors;
 		selector.extensions = extensions;
@@ -343,11 +351,19 @@ var Selector = function(data) {
 		var group = this._group;
 		var axis_data_filter = function(val) { return val; };
 		if (this._column === "changes") {
-			if (yAxisKeysArray.length === 1) {
+			if (yAxisKeysArray.length === 1 && this._filter_type === null) {
 				group = "change_type";
 			}
 			else {
-				axis_data_filter = function(val) { return val[0] + val[1]; };
+				if (this._filter_type.indexOf("Added") !== -1) {
+					axis_data_filter = function(val) { return val[0]; };
+				}
+				else if (this._filter_type.indexOf("Removed") !== -1) {
+					axis_data_filter = function(val) { return val[1]; };
+				}
+				else {
+					axis_data_filter = function(val) { return val[0] + val[1]; };
+				}
 			}
 		}
 
@@ -673,6 +689,7 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	var graph = null;
 	var authorFilterElements = [];
 	var extensionFilterElements = [];
+	var typeFilterElements = [];
 
 	var apply_filters = function() {
 		var author_ids = [];
@@ -704,10 +721,12 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 		var project_filter = build_filter(selectedProjects);
 		var author_filter = authorFilterElements === null ? null : build_filter(selectedAuthors);
 		var extension_filter = extensionFilterElements === null ? null : build_filter(selectedExtensions);
+		var type_filter = typeFilterElements === null ? null : build_filter(selectedTypes);
 		var filtered = select.
 			filter_project(project_filter).
 			filter_author(author_filter).
 			filter_extension(extension_filter).
+			filter_type(type_filter).
 			group_y(extension_filter === null ? (author_filter === null ? null : "author") : "extension");
 		var dygraph_data = convert_statistics_to_digraph(filtered.materialize());
 		opts.file = dygraph_data.data;
@@ -777,6 +796,23 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 		extensionFilterElements = null;
 	}
 
+	if (enabled_filters.indexOf("type") !== -1) {
+		filter = create_subnav_filter(
+			[["Added", "Added"], ["Removed", "Removed"]],
+			selectedTypes,
+			function(type) {
+				return type[0];
+			},
+			function(e, type, selected) {
+				selectedTypes = selected;
+				apply_filters();
+			},
+			"Type:"
+		);
+		pageContent.appendChild(filter.element);
+		typeFilterElements = filter.elements;
+	}
+
 	pageContent.appendChild(plot);
 	graph = new Dygraph(plot, dygraph_data.data, opts);
 	apply_filters();
@@ -799,7 +835,7 @@ function clicked_lines() {
 
 function clicked_changes() {
 	var select = selector.select("changes", "sum");
-	create_graph_view("Changes", select, ["project", "author", "extension"], "ts");
+	create_graph_view("Changes", select, ["project", "author", "extension", "type"], "ts");
 }
 
 var menu_item_commits = document.getElementById("menu_item_commits");
