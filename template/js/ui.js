@@ -386,7 +386,7 @@ var BarChartPlotter = function(e) {
 	}
 }
 
-var create_subnav_filter = function(iterable, label_fn, click_fn, label) {
+var create_subnav_filter = function(iterable, initial, label_fn, click_fn, label) {
 	var items = [];
 	var elements = {};
 	var on_click_listener = function(item, click_fn) {
@@ -456,7 +456,9 @@ var create_subnav_filter = function(iterable, label_fn, click_fn, label) {
 	dt.innerHTML = label;
 	dl.appendChild(dt);
 	var dd = document.createElement("DD");
-	dd.className = "active";
+	if (initial.indexOf(null) !== -1) {
+		dd.className = "active";
+	}
 	var a = document.createElement("A");
 	a.innerHTML = "All";
 	a.onclick = on_click_listener(null, click_fn);
@@ -467,6 +469,13 @@ var create_subnav_filter = function(iterable, label_fn, click_fn, label) {
 		var dd = document.createElement("DD");
 		var a = document.createElement("A");
 		var aText = document.createTextNode(label_fn(iterable[i]));
+		for (var j = 0; j < initial.length; ++j) {
+			if (initial[j] !== null) {
+				if (initial[j][1] === iterable[i][1]) {
+					dd.className = "active";
+				}
+			}
+		}
 		a.onclick = on_click_listener(iterable[i], click_fn);
 		a.appendChild(aText);
 		dd.appendChild(a);
@@ -668,6 +677,7 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	if (enabled_filters.indexOf("project") !== -1) {
 		var filter = create_subnav_filter(
 			projects,
+			selectedProjects,
 			function(project) {
 				return project[0]
 			},
@@ -689,6 +699,7 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	if (authors.length > 1 && enabled_filters.indexOf("author") !== -1) {
 		filter = create_subnav_filter(
 			authors,
+			selectedAuthors,
 			function(author) {
 				return author[0];
 			},
@@ -708,6 +719,7 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	if (enabled_filters.indexOf("extension") !== -1) {
 		filter = create_subnav_filter(
 			extensions,
+			selectedExtensions,
 			function(extension) {
 				return extension[0];
 			},
