@@ -163,6 +163,106 @@ var Selector = function(data) {
 			var commits = projectData.commits;
 			var authors = projectData.authors;
 			var extensions = projectData.extensions;
+
+			var get_x_axis_fn = function(self) {
+				switch (self._group_x) {
+					case "date":
+						return function(commit) {
+							var d = new Date(commit[0] * 1000);
+							return date_to_str(d);
+						}
+					case null:
+						return function() {
+							return "all";
+						}
+					default:
+						return function() {
+							return undefined;
+						}
+				}
+			}
+
+			var get_y_axis_fn = function(self) {
+				switch (self._group_y) {
+					case "author":
+						return function(commit) {
+							return authors[commit[1]][1];
+						}
+					case null:
+						return function() {
+							return "all";
+						}
+					default:
+						return function() {
+							return undefined;
+						}
+				}
+			}
+
+			var get_value_fn = function(self) {
+				switch (self._column) {
+					case "commit":
+						return function(extensionData, extension_id) {
+							if (extension_id === 0) {
+								return undefined;
+							}
+							else {
+								return null;
+							}
+						}
+					case "files":
+						return function(extensionData) {
+							return extensionData[0];
+						}
+					case "lines":
+						return function(extensionData) {
+							return extensionData[1];
+						}
+					default:
+						return function() {
+							return undefined;
+						}
+				}
+			}
+
+			var get_save_fn = function(self) {
+				switch (self._function) {
+					case "count":
+						return function(value, stat, yAxis) {
+							array_setdefault(stat, yAxis, 0);
+							if (value !== null) {
+								stat[yAxis]++;
+							}
+						}
+					case "sum":
+						return function(value, stat, yAxis) {
+							array_setdefault(stat, yAxis, 0);
+							if (value !== null) {
+								stat[yAxis] += value;
+							}
+						}
+					case "value":
+						if (self._group_y === "extension") {
+							return function(value, stat, yAxis) {
+								stat[yAxis] = value;
+							}
+						}
+						else {
+							return function(value, stat, yAxis) {
+								array_setdefault(stat, yAxis, 0);
+								stat[yAxis] += value;
+							}
+						}
+					default:
+						return function() {};
+				}
+			}
+
+			var xAxisFn = get_x_axis_fn(this);
+			var yAxisFn = get_y_axis_fn(this);
+			var valueFn = get_value_fn(this);
+			var saveFn = get_save_fn(this);
+
 			for (var i = 0; i < extensions.length; ++i) {
 				if (this._cache.extensions.indexOf(extensions[i]) === -1) {
 					this._cache.extensions.push(extensions[i]);
@@ -170,10 +270,8 @@ var Selector = function(data) {
 			}
 			for (var b = 0, lenb = commits.length; b < lenb; ++b) {
 				var commit = commits[b];
-				var d = new Date(commit[0] * 1000);
 				var author = authors[commit[1]];
 				var commitData = commit[2];
-				var dateStr = date_to_str(d);
 				var xAxis = "";
 
 				if (this._filter_author !== null) {
@@ -186,40 +284,17 @@ var Selector = function(data) {
 					this._cache.authors.push(author);
 				}
 
-				switch (this._group_x) {
-					case "date":
-						xAxis = dateStr; break;
-					case null:
-						xAxis = "all"; break;
-					default:
-						xAxis = undefined; break;
-				}
-				if (xMin === null) {
-					xMin = xAxis;
-				}
-				if (xMax === null) {
-					xMax = xAxis;
-				}
-				if (xAxis < xMin) {
-					xMin = xAxis;
-				}
-				if (xAxis > xMax) {
-					xMax = xAxis;
-				}
-				array_setdefault(stats, xAxis, {});
-				var stat = stats[xAxis];
-				var yAxis = "";
-				switch (this._group_y) {
-					case "author":
-						yAxis = author[1]; break;
-					case null:
-						yAxis = "all"; break;
-					default:
-						yAxis = undefined; break;
-				}
+				xAxis = xAxisFn(commit);
+				yAxis = yAxisFn(commit);
 				if (yAxis !== undefined) {
 					yAxisKeys[yAxis] = true;
 				}
+
+				xMin = (xMin === null || xAxis < xMin) ? xAxis : xMin;
+				xMax = (xMax === null || xAxis > xMax) ? xAxis : xMax;
+
+				array_setdefault(stats, xAxis, {});
+				var stat = stats[xAxis];
 
 				if ((this._function === "value" || this._function === "sum") && yAxis !== undefined) {
 					stat[yAxis] = 0;
@@ -240,54 +315,7 @@ var Selector = function(data) {
 						yAxisKeys[yAxis] = true;
 					}
 
-					var value = undefined;
-
-					switch (this._column) {
-						case "":
-							value = undefined;
-							break;
-						case "commit":
-							if (c == 0) {
-								value = undefined;
-							}
-							else {
-								value = null;
-							}
-							break;
-						case "files":
-							value = extensionData[0];
-							break;
-						case "lines":
-							value = extensionData[1];
-							break;
-						default:
-							value = undefined;
-							break;
-					}
-
-					switch (this._function) {
-						case "count":
-							array_setdefault(stat, yAxis, 0);
-							if (value !== null) {
-								stat[yAxis]++;
-							}
-							break;
-						case "sum":
-							array_setdefault(stat, yAxis, 0);
-							if (value !== null) {
-								stat[yAxis] += value;
-							}
-							break;
-						case "value":
-							if (this._group_y === "extension") {
-								stat[yAxis] = value;
-							}
-							else {
-								array_setdefault(stat, yAxis, 0);
-								stat[yAxis] += value;
-							}
-							break;
-					}
+					saveFn(valueFn(extensionData, c), stat, yAxis);
 				}
 			}
 		}
@@ -566,7 +594,17 @@ var project_header_suffix = function(selected_projects) {
 var selector = new Selector(data);
 var projects = selector.select().projects();
 var authors = selector.select().authors();
-var extensions = selector.select().extensions();
+
+var extensions = [];
+var project_authors = [];
+var project_extensions = [];
+
+(function () {
+	extensions = selector.select().extensions();
+	select = selector.select("commit", "count");
+	project_authors = select.authors();
+	project_extensions = select.extensions();
+}());
 
 var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	set_page_header_text(label + " - " + project_header_suffix(selectedProjects));
@@ -583,9 +621,6 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 	var extensionFilterElements = [];
 
 	var apply_filters = function() {
-		var project_filter = build_filter(selectedProjects);
-		var project_authors = select.filter_author(null).filter_project(project_filter).authors();
-		var project_extensions = select.filter_author(null).filter_project(project_filter).extensions();
 		var author_ids = [];
 		var extension_ids = [];
 		for (var i = 0; i < project_authors.length; ++i) {
@@ -612,9 +647,11 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 		}
 		set_page_header_text(label + " - " + project_header_suffix(selectedProjects));
 
+		var project_filter = build_filter(selectedProjects);
 		var author_filter = authorFilterElements === null ? null : build_filter(selectedAuthors);
 		var extension_filter = extensionFilterElements === null ? null : build_filter(selectedExtensions);
 		var filtered = select.
+			filter_project(project_filter).
 			filter_author(author_filter).
 			filter_extension(extension_filter).
 			group_y(author_filter === null ? (extension_filter === null ? null : "extension") : "author");
@@ -632,6 +669,10 @@ var create_graph_view = function(label, select, enabled_filters, graph_style) {
 			},
 			function(e, project, selected) {
 				selectedProjects = selected;
+				var project_filter = build_filter(selectedProjects);
+				var select = selector.select("commit", "count").filter_project(project_filter);
+				project_authors = select.filter_author(null).filter_project(project_filter).authors();
+				project_extensions = select.filter_author(null).filter_project(project_filter).extensions();
 				apply_filters();
 			},
 			"Project:"
