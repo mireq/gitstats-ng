@@ -5,6 +5,7 @@ from .git import Git, GitError
 from collections import namedtuple
 from itertools import chain
 import json
+import sys
 
 
 Commit = namedtuple("Commit", "time author stat")
@@ -29,19 +30,12 @@ class Repository(object):
 
 		for blob in self.git.commit_blobs(commit.sha):
 			ext = blob.extension
-
 			stat.setdefault(ext, DEFAULT_STATISTIC)
-			old = stat[ext]
-			stat[ext] = old._replace(count=old.count + 1)
-
 			file_data = self.git.file_data(blob.sha)
-			if file_data.is_binary:
-				continue
-
 			old = stat[ext]
 			stat[ext] = Statistic(
-				old[0],
-				old[1] + file_data.lines,
+				old[0] + 1,
+				old[1] + file_data.lines or 0,
 				old[2] + (blob.added or 0),
 				old[3] + (blob.removed or 0),
 			)
@@ -56,7 +50,12 @@ class Repository(object):
 		projectstats = {}
 
 		authors = self.git.authors()
-		commits = [self.collect_commit(c) for c in self.git.commits()]
+		commits = self.git.commits();
+		for i, c in enumerate(commits):
+			sys.stdout.write("%d / %d\r" % (i, len(commits)))
+			sys.stdout.flush()
+			commits[i] = self.collect_commit(c)
+		self.git.save_cache()
 		extensions = list(set(chain(*[c.stat.keys() for c in commits])))
 
 		mail_to_id = {a.email: i for i, a in enumerate(authors)}

@@ -1,18 +1,19 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import json
 import os.path
 import re
 from collections import namedtuple
 from subprocess import Popen, PIPE
 
 
-AuthorData = namedtuple('Author', 'name email')
-BlobLstreeData = namedtuple('Blob', 'sha filename')
-BlobDiffData = namedtuple('Blob', 'filename added removed')
-BlobData = namedtuple('Blob', 'sha filename extension added removed')
-CommitData = namedtuple('Commit', 'sha time email')
-FileData = namedtuple('File', 'sha lines is_binary')
+AuthorData = namedtuple('AuthorData', 'name email')
+BlobLstreeData = namedtuple('BlobLstreeData', 'sha filename')
+BlobDiffData = namedtuple('BlobDiffData', 'filename added removed')
+BlobData = namedtuple('BlobData', 'sha extension added removed')
+CommitData = namedtuple('CommitData', 'sha time email')
+FileData = namedtuple('FileData', 'sha lines is_binary')
 
 
 class GitError(RuntimeError):
@@ -21,6 +22,20 @@ class GitError(RuntimeError):
 
 def sha_cache(func):
 	def get_or_set_cache(self, sha):
+		if self._cache is None:
+			self._cache = {}
+			try:
+				with open(self._cache_file, "rb") as sha_cache_file:
+					data = json.loads(sha_cache_file.read())
+					for sha_hash, item in data.iteritems():
+						is_bloblist = isinstance(item[0], list)
+						if is_bloblist:
+							self._cache[sha_hash] = [BlobData(*d) for d in item]
+						else:
+							self._cache[sha_hash] = FileData(*item)
+			except Exception:
+				pass
+
 		if sha in self._cache:
 			return self._cache[sha]
 		else:
@@ -35,7 +50,8 @@ class Git(object):
 		self.gitdir = gitdir
 		self.tree_path = '.'
 		self.commit_range = first_commit + '..' + last_commit if first_commit else last_commit
-		self._cache = {}
+		self._cache = None
+		self._git_dir = None
 
 	def git(self, *args):
 		proc = Popen(('git',) + args, cwd=self.gitdir, stdout=PIPE, stderr=PIPE)
@@ -45,6 +61,17 @@ class Git(object):
 			raise GitError(errors)
 		else:
 			return out
+
+	@property
+	def git_dir(self):
+		if self._git_dir is None:
+			git_dir = self.git("rev-parse", "--git-dir").rstrip("\n")
+			self._git_dir = os.path.abspath(os.path.join(self.gitdir, git_dir))
+		return self._git_dir
+
+	@property
+	def _cache_file(self):
+		return os.path.join(self.git_dir, "gitstats_cache")
 
 	def rx_process(self, rx, value, fn):
 		match = re.match(rx, value)
@@ -84,7 +111,7 @@ class Git(object):
 			files = self.run_and_parse(rx, BlobDiffData, args=args)
 
 		files = {f.filename: (int(f.added), int(f.removed)) for f in files}
-		blobs = [BlobData(t.sha, t.filename, os.path.splitext(t.filename)[1], *files.get(t.filename, (None, None))) for t in trees]
+		blobs = [BlobData(t.sha, os.path.splitext(t.filename)[1], *files.get(t.filename, (None, None))) for t in trees]
 		return blobs
 
 	@sha_cache
@@ -98,3 +125,8 @@ class Git(object):
 			lines = 0
 			is_binary = True
 		return FileData(sha, lines, is_binary=is_binary)
+
+	def save_cache(self):
+		if self._cache is not None:
+			sha_cache_file = open(self._cache_file, "wb")
+			sha_cache_file.write(json.dumps(self._cache))
