@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import os
 import sys
 from collections import namedtuple
 from itertools import chain
@@ -24,6 +25,13 @@ class Repository(object):
 		except GitError:
 			return False
 		return True
+
+	@property
+	def repo_name(self):
+		last = os.path.split(self.git.toplevel)[-1]
+		if last.find(".git") == len(last) - 4:
+			last = last[0:-4]
+		return last
 
 	def collect_commit(self, commit):
 		stat = {}
@@ -67,4 +75,4 @@ class Repository(object):
 		projectstats["commits"] = commits
 		projectstats["extensions"] = extensions
 
-		return ("projekt", projectstats)
+		return (self.repo_name, projectstats)

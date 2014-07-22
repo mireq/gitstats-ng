@@ -70,6 +70,11 @@ class Git(object):
 		return self._git_dir
 
 	@property
+	def toplevel(self):
+		toplevel = self.git("rev-parse", "--show-toplevel").rstrip("\n")
+		return os.path.abspath(os.path.join(self.gitdir, toplevel))
+
+	@property
 	def _cache_file(self):
 		return os.path.join(self.git_dir, "gitstats_cache")
 
