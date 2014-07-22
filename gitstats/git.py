@@ -25,7 +25,7 @@ def sha_cache(func):
 		if self._cache is None:
 			self._cache = {}
 			try:
-				with open(self._cache_file, "rb") as sha_cache_file:
+				with open(self._cache_file, "r") as sha_cache_file:
 					data = json.loads(sha_cache_file.read())
 					for sha_hash, item in data.iteritems():
 						is_bloblist = isinstance(item[0], list)
@@ -128,5 +128,5 @@ class Git(object):
 
 	def save_cache(self):
 		if self._cache is not None:
-			sha_cache_file = open(self._cache_file, "wb")
+			sha_cache_file = open(self._cache_file, "w")
 			sha_cache_file.write(json.dumps(self._cache))

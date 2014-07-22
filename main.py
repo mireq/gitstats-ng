@@ -29,7 +29,7 @@ def main():
 
 		repositories.append(repository)
 
-	generator = gitstats.Generator(repositories=repositories, out_path=args.out_path)
+	generator = gitstats.Generator(repositories=repositories, out_path=args.out_path[0])
 	generator.generate()
 
 

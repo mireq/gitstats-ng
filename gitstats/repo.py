@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-from .git import Git, GitError
+import sys
 from collections import namedtuple
 from itertools import chain
-import json
-import sys
+
+from .git import Git, GitError
 
 
 Commit = namedtuple("Commit", "time author stat")
@@ -67,4 +67,4 @@ class Repository(object):
 		projectstats["commits"] = commits
 		projectstats["extensions"] = extensions
 
-		print("data="+json.dumps((("projekt", projectstats),)))
+		return ("projekt", projectstats)
