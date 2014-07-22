@@ -29,7 +29,7 @@ class Repository(object):
 	@property
 	def repo_name(self):
 		last = os.path.split(self.git.toplevel)[-1]
-		if last.find(".git") == len(last) - 4:
+		if ".git" in last and last.rfind(".git") == len(last) - 4:
 			last = last[0:-4]
 		return last
 
