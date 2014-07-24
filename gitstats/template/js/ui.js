@@ -155,6 +155,10 @@ var Selector = function(data) {
 		var xMax = null;
 		var stats = {};
 		var yAxisKeys = {};
+		var defaultProjectsVal = [];
+		for (var i = 0; i < self.data.length; ++i) {
+			defaultProjectsVal[i] = 0;
+		}
 
 		for (var a = 0, lena = this.data.length; a < lena; ++a) {
 			if (this._filter_project !== null) {
@@ -219,12 +223,16 @@ var Selector = function(data) {
 							}
 						}
 					case "files":
-						return function(extensionData) {
-							return extensionData[0];
+						return function(extensionData, extension_id, commit_id, project_id) {
+							var data = defaultProjectsVal.slice(0);
+							data[project_id] = extensionData[0];
+							return data;
 						}
 					case "lines":
-						return function(extensionData) {
-							return extensionData[1];
+						return function(extensionData, extension_id, commit_id, project_id) {
+							var data = defaultProjectsVal.slice(0);
+							data[project_id] = extensionData[1];
+							return data;
 						}
 					case "changes":
 						return function(extensionData) {
@@ -273,7 +281,16 @@ var Selector = function(data) {
 						else {
 							return function(value, stat, yAxis) {
 								array_setdefault(stat, yAxis, 0);
-								stat[yAxis] += value;
+								if (Object.prototype.toString.call(value) === '[object Array]') {
+									for (var i = 0; i < value.length; ++i) {
+										stat[yAxis][i] += value[i];
+									}
+								}
+								else {
+									if (value !== null) {
+										stat[yAxis] += value;
+									}
+								}
 							}
 						}
 					default:
@@ -320,7 +337,17 @@ var Selector = function(data) {
 				var stat = stats[xAxis];
 
 				if (this._function === "value" && yAxis !== undefined) {
-					stat[yAxis] = 0;
+					if (this._column === "lines" || this._column === "files") {
+						if (stat[yAxis] === undefined) {
+							stat[yAxis] = defaultProjectsVal.slice(0);
+						}
+						else {
+							stat[yAxis][a] = 0;
+						}
+					}
+					else {
+						stat[yAxis] = 0;
+					}
 				}
 
 				for (var c = 0, lenc = commitData.length; c < lenc; ++c) {
@@ -338,7 +365,7 @@ var Selector = function(data) {
 						yAxisKeys[yAxis] = true;
 					}
 
-					saveFn(valueFn(extensionData, c), stat, yAxis);
+					saveFn(valueFn(extensionData, c, b, a), stat, yAxis);
 				}
 			}
 		}
@@ -350,30 +377,44 @@ var Selector = function(data) {
 
 		var group = this._group;
 		var axis_data_filter = function(val) { return val; };
-		if (this._column === "changes") {
-			if (yAxisKeysArray.length === 1 && this._filter_type === null) {
-				group = "change_type";
-			}
-			else {
-				if (this._filter_type.indexOf("Added") !== -1) {
-					axis_data_filter = function(val) { return val[0]; };
-				}
-				else if (this._filter_type.indexOf("Removed") !== -1) {
-					axis_data_filter = function(val) { return val[1]; };
+		switch (this._column) {
+			case "changes":
+				if (yAxisKeysArray.length === 1 && this._filter_type === null) {
+					group = "change_type";
 				}
 				else {
-					axis_data_filter = function(val) { return val[0] + val[1]; };
+					if (this._filter_type.indexOf("Added") !== -1) {
+						axis_data_filter = function(val) { return val[0]; };
+					}
+					else if (this._filter_type.indexOf("Removed") !== -1) {
+						axis_data_filter = function(val) { return val[1]; };
+					}
+					else {
+						axis_data_filter = function(val) { return val[0] + val[1]; };
+					}
 				}
-			}
+				break;
+			case "files":
+			case "lines":
+				axis_data_filter = function(val) {
+					var sum = 0;
+					for (var i = 0; i < val.length; ++i) {
+						sum += val[i];
+					}
+					return sum;
+				};
+				break;
 		}
 
 		if (this._group_x == "date") {
+			var last = {};
 			xMin = new Date(xMin);
 			xMax = new Date(xMax);
-			var last = {};
+
 			for (var d = xMin; d <= xMax; d.setDate(d.getDate() + 1)) {
 				var dateStr = date_to_str(d);
-				if (stats[dateStr] === undefined) {
+				var stat = stats[dateStr];
+				if (stat === undefined) {
 					if (this._column === "files" || this._column === "lines") {
 						stats[dateStr] = last;
 					}
@@ -382,7 +423,22 @@ var Selector = function(data) {
 					}
 				}
 				else {
-					last = stats[dateStr];
+					for (var key in stat) {
+						var val = stat[key];
+						if (last[key] === undefined) {
+							last[key] = val;
+						}
+						if (this._column === "files" || this._column === "lines") {
+							for (var i = 0; i < val.length; ++i) {
+								if (val[i] == 0) {
+									val[i] = last[key][i];
+								}
+								else {
+									last[key][i] = val[i];
+								}
+							}
+						}
+					}
 				}
 			}
 		}
