@@ -32,7 +32,7 @@ def sha_cache(func):
 					if version != 1:
 						raise RuntimeError('Bad cache version')
 					data = data['data']
-					for sha_hash, item in data.iteritems():
+					for sha_hash, item in data.items():
 						is_bloblist = isinstance(item[0], list)
 						if is_bloblist:
 							self._cache[sha_hash] = [BlobData(*d) for d in item]
