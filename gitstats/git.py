@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 import json
 import os.path
+import os
 import re
 from collections import namedtuple
 from subprocess import Popen, PIPE
@@ -27,14 +28,23 @@ def sha_cache(func):
 			try:
 				with open(self._cache_file, "r") as sha_cache_file:
 					data = json.loads(sha_cache_file.read())
+					version = data.get('version', 0)
+					if version != 1:
+						raise RuntimeError('Bad cache version')
+					data = data['data']
 					for sha_hash, item in data.iteritems():
 						is_bloblist = isinstance(item[0], list)
 						if is_bloblist:
 							self._cache[sha_hash] = [BlobData(*d) for d in item]
 						else:
 							self._cache[sha_hash] = FileData(*item)
-			except Exception:
+			except IOError:
 				pass
+			except Exception:
+				try:
+					os.remove(self._cache_file)
+				except OSError:
+					pass
 
 		if sha in self._cache:
 			return self._cache[sha]
@@ -134,4 +144,4 @@ class Git(object):
 	def save_cache(self):
 		if self._cache is not None:
 			sha_cache_file = open(self._cache_file, "w")
-			sha_cache_file.write(json.dumps(self._cache))
+			sha_cache_file.write(json.dumps({'version': 1, 'data': self._cache}))
