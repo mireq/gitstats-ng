@@ -75,13 +75,13 @@ class Git(object):
 	@property
 	def git_dir(self):
 		if self._git_dir is None:
-			git_dir = self.git("rev-parse", "--git-dir").rstrip("\n")
+			git_dir = self.git("rev-parse", "--git-dir").decode('utf-8').rstrip("\n")
 			self._git_dir = os.path.abspath(os.path.join(self.gitdir, git_dir))
 		return self._git_dir
 
 	@property
 	def toplevel(self):
-		toplevel = self.git("rev-parse", "--show-toplevel").rstrip("\n")
+		toplevel = self.git("rev-parse", "--show-toplevel").decode('utf-8').rstrip("\n")
 		return os.path.abspath(os.path.join(self.gitdir, toplevel))
 
 	@property
