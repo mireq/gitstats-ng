@@ -63,6 +63,8 @@ class Repository(object):
 			sys.stdout.write("%d / %d\r" % (i, len(commits)))
 			sys.stdout.flush()
 			commits[i] = self.collect_commit(c)
+		sys.stdout.write("%d / %d\n" % (i + 1, len(commits)))
+		sys.stdout.flush()
 		self.git.save_cache()
 		extensions = list(set(chain(*[c.stat.keys() for c in commits])))
 
