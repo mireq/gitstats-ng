@@ -21,7 +21,7 @@ class Repository(object):
 
 	def check_gitdir(self):
 		try:
-			self.git.git("status")
+			self.git.git("log", "-1")
 		except GitError:
 			return False
 		return True
