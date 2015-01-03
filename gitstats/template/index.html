@@ -8,30 +8,38 @@
 </head>
 <body>
 
-<header id="sidebar">
+<nav id="sidebar">
 	<div class="icon-bar vertical six-up">
-		<a class="item" id="menu_item_commits">
+		<a class="item" href="#tab_commits">
 			<img src="img/commits.png" />
 			<label>Commits</label>
 		</a>
-		<a class="item" id="menu_item_files">
+		<a class="item" href="#tab_files">
 			<img src="img/files.png" />
 			<label>Files</label>
 		</a>
-		<a class="item" id="menu_item_lines">
+		<a class="item" href="#tab_lines">
 			<img src="img/lines.png" />
 			<label>Lines</label>
 		</a>
-		<a class="item" id="menu_item_changes">
+		<a class="item" href="#tab_changes">
 			<img src="img/changes.png" />
 			<label>Changes</label>
 		</a>
 	</div>
+</nav>
+
+<header>
+	<h1>Title</h1>
 </header>
 
+<article id="filter">
+</article>
+
 <article id="content">
-	<h1>Title</h1>
-	<section>Javascript required</section>
+	<div class="panel">
+		<p>Javascript required</p>
+	</div>
 </article>
 
 <script src="data.js" type="text/javascript" charset="utf-8"></script>

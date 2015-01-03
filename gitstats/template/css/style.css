@@ -52,7 +52,7 @@ html, body {
   font-size: 100%; }
 
 body {
-  background: #fff;
+  background: #f2f2f2;
   color: #222;
   padding: 0;
   margin: 0;
@@ -678,16 +678,36 @@ blockquote, blockquote p {
   .icon-bar.eight-up.large-vertical .item {
     width: auto; } }
 
+::-webkit-scrollbar {
+  width: 13px;
+  height: 18px; }
+
+::-webkit-scrollbar-thumb {
+  height: 5px;
+  border: 3px solid rgba(0, 0, 0, 0);
+  background-clip: padding-box;
+  -webkit-border-radius: 7px;
+  background-color: rgba(0, 0, 0, 0.15);
+  -webkit-box-shadow: inset -1px -1px 0px rgba(0, 0, 0, 0.05), inset 1px 1px 0px rgba(0, 0, 0, 0.05); }
+
+::-webkit-scrollbar-button {
+  width: 0;
+  height: 0;
+  display: none; }
+
+::-webkit-scrollbar-corner {
+  background-color: transparent; }
+
 html, body {
   width: 100%;
   height: 100%; }
 
 body {
-  margin: 0 auto; }
+  margin: 0 auto;
+  background: #f2f2f2; }
 
-h1 {
-  margin-top: 0;
-  cursor: pointer; }
+a {
+  outline: 0 !important; }
 
 #sidebar {
   width: 125px;
@@ -697,18 +717,43 @@ h1 {
   top: 0px;
   bottom: 0px;
   left: 0px; }
-  #sidebar #sidebar .icon-bar {
-    width: 125px; }
+  #sidebar .icon-bar {
+    box-shadow: inset -10px 0px 10px -10px rgba(0, 0, 0, 0.25); }
 
 #content {
-  height: 100%;
-  margin-left: 125px; }
-  #content h1, #content section {
-    margin-left: 20px;
-    margin-right: 20px; }
+  box-shadow: inset 0px 4px 4px -4px rgba(0, 0, 0, 0.1); }
+
+#content, #filter {
+  margin-left: 125px;
+  padding: 0.9375rem; }
+
+#filter {
+  background: white;
+  display: none;
+  border-top: 1px solid #f2f2f2; }
+
+body > header {
+  margin-left: 125px;
+  padding: 0 0.9375rem;
+  background: white;
+  position: relative; }
+  body > header h1 {
+    padding: 0;
+    margin: 0;
+    line-height: 2.14; }
+
+.panel {
+  background: white;
+  padding: 0.9375rem;
+  margin-bottom: 0.9375rem;
+  box-shadow: 0px 1px 3px rgba(0, 0, 0, 0.1); }
 
 .graph {
   height: 400px; }
 
-.icon-bar > .item.active {
-  background: #008CBA !important; }
+.icon-bar {
+  position: relative; }
+  .icon-bar.vertical.six-up {
+    width: 100%; }
+  .icon-bar > .item.active {
+    background: #008CBA !important; }
