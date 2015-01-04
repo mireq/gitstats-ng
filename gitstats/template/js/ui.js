@@ -1,20 +1,7 @@
 (function () {
 
-var pageBody = document.getElementById("content");
-var filterBody = document.getElementById("filter");
-var pageHeader = document.getElementsByTagName("H1")[0];
-
 var isArray = function(value) {
 	return Object.prototype.toString.call(value) === '[object Array]';
-}
-
-var filterShow = function(show) {
-	if (show === undefined || show === true) {
-		filterBody.style.display = 'block';
-	}
-	else {
-		filterBody.style.display = 'none';
-	}
 }
 
 var dateToStr = function(d) {
@@ -27,6 +14,73 @@ var createArray = function(length) {
 		a.push(null);
 	}
 	return a;
+}
+
+var Filter = function() {
+	this._selector = new Selector(data);
+	this._selectorQuery = [];
+
+	this._hdr = document.createElement('H4');
+	this._hdr.innerHTML = 'Filter';
+
+	this.onchange = undefined;
+
+	var filterBody = document.getElementById("filter");
+	filterBody.innerHTML = '';
+	filterBody.appendChild(this._hdr);
+
+	this.show = function(show) {
+		if (show === undefined || show === true) {
+			filterBody.style.display = 'block';
+			this._trigger_onchange();
+		}
+		else {
+			filterBody.style.display = 'none';
+		}
+	}
+
+	this.setup = function(selectorQuery) {
+		this._selectorQuery = selectorQuery;
+	}
+
+	this.select = function() {
+		return this._selector.select(this._selectorQuery[0], this._selectorQuery[1], this._selectorQuery[2]);
+	}
+
+	this._trigger_onchange = function() {
+		if (this.onchange !== undefined) {
+			this.onchange();
+		}
+	}
+}
+
+var Page = function() {
+	this.pageBody = document.getElementById("content");
+	this.pageHeader = document.getElementsByTagName("H1")[0];
+
+	this.clearBody = function() {
+		this.pageBody.innerHTML = '';
+	}
+
+	this.createPanel = function() {
+		var panel = document.createElement('DIV');
+		panel.className = 'panel';
+		this.pageBody.appendChild(panel);
+		return panel;
+	}
+
+	this.createPlot = function(parent) {
+		var plot = document.createElement("DIV");
+		plot.className = "graph";
+		parent.appendChild(plot);
+		return plot;
+	}
+
+	this.setPageHeader = function(text) {
+		var text = document.createTextNode(text);
+		this.pageHeader.innerHTML = '';
+		this.pageHeader.appendChild(text);
+	}
 }
 
 var Selector = function(data) {
@@ -70,11 +124,11 @@ var Selector = function(data) {
 		return data;
 	}
 
-	this.select = function(axisX, axisY, value) {
+	this.select = function(value, axisX, axisY) {
 		var selector = new Selector(data);
+		selector._value = value;
 		selector._axisX = axisX;
 		selector._axisY = axisY;
-		selector._value = value;
 		return selector;
 	}
 
@@ -95,6 +149,12 @@ var Selector = function(data) {
 						var d = new Date(data.date * 1000);
 						return dateToStr(d);
 					}
+					break;
+				case 'author':
+					return function(data) {
+						return data.author;
+					}
+					break;
 			}
 		}
 		var getSortFn = function(axis) {
@@ -220,6 +280,8 @@ var Selector = function(data) {
 
 		var collected = {};
 
+		var cacheAuthors = [];
+
 		that.data.forEach(function(project, projectId) {
 			var projectName = project[0];
 			var projectData = project[1];
@@ -241,7 +303,8 @@ var Selector = function(data) {
 				var author = authors[commit[1]];
 				var commitData = commit[2];
 
-				if (that._cache.authors.indexOf(author) === -1) {
+				if (cacheAuthors.indexOf(author[1]) === -1) {
+					cacheAuthors.push(author[1]);
 					that._cache.authors.push(author);
 				}
 
@@ -250,7 +313,7 @@ var Selector = function(data) {
 					var data = {
 						project: projectId,
 						commit: commitId,
-						author: author,
+						author: cacheAuthors.indexOf(author[1]),
 						extension: extension,
 						date: date,
 						data: extensionData
@@ -325,11 +388,10 @@ var BarChartPlotter = function(e) {
 	}
 }
 
-var setPageHeader = function(text) {
-	var text = document.createTextNode(text);
-	pageHeader.innerHTML = '';
-	pageHeader.appendChild(text);
-}
+var ui = {
+	filter: new Filter(),
+	page: new Page()
+};
 
 var getDygraphOpts = function(type, data) {
 	var opts = {};
@@ -363,61 +425,86 @@ var getDygraphOpts = function(type, data) {
 	return opts;
 }
 
-var updateFilter = function() {
-	filterBody.innerHTML = '';
-	var hdr = document.createElement('H4');
-	hdr.innerHTML = 'Filter';
-	filterBody.appendChild(hdr);
-}
+var tabTransitionFunctions = (function (ui) {
+	var setupPlot = function(filterArgs, plotType) {
+		var panel = ui.page.createPanel();
+		var plot = ui.page.createPlot(panel);
+		var graph = undefined;
 
-var createPanel = function() {
-	var panel = document.createElement('DIV');
-	panel.className = 'panel';
-	pageBody.appendChild(panel);
-	return panel;
-}
-
-var createPlot = function(parent) {
-	var plot = document.createElement("DIV");
-	plot.className = "graph";
-	parent.appendChild(plot);
-	return plot;
-}
-
-var tabActivateFunctions = {
-	commits: function() {
-			var selector = new Selector(data);
-			var statistics = selector.select("date", undefined, "commits").materialize();
-			var opts = getDygraphOpts('ts', statistics);
-
-			var panel = createPanel();
-			var plot = createPlot(panel);
-			var graph = new Dygraph(plot, opts.file, opts);
-			graph.updateOptions(opts)
-		},
-	files: function() {
-			var selector = new Selector(data);
-			var statistics = selector.select("date", undefined, "files").materialize();
-			var opts = getDygraphOpts('tsline', statistics);
-
-			var panel = createPanel();
-			var plot = createPlot(panel);
-			var graph = new Dygraph(plot, opts.file, opts);
-			graph.updateOptions(opts)
-		},
-	lines: function() {
-			var selector = new Selector(data);
-			var statistics = selector.select("date", undefined, "lines").materialize();
-			var opts = getDygraphOpts('tsline', statistics);
-
-			var panel = createPanel();
-			var plot = createPlot(panel);
-			var graph = new Dygraph(plot, opts.file, opts);
-			graph.updateOptions(opts)
-		},
-	changes: function() {
+		ui.filter.setup(filterArgs);
+		ui.filter.onchange = function() {
+			var data = ui.filter.select().materialize();
+			var opts = getDygraphOpts(plotType, data);
+			if (graph === undefined) {
+				graph = new Dygraph(plot, opts.file, opts);
+			}
+			else {
+				graph.update(opts);
+			}
 		}
-}
+		ui.filter.show();
+	}
+
+	var deactivate = undefined;
+	var fn = {
+		commits: function() {
+			return {
+				activate: function() {
+					setupPlot(["commits", "date"], "ts")
+				},
+				deactivate: function() {
+					ui.filter.onchange = undefined;
+					ui.filter.show(false);
+				}
+			}
+		},
+		files: function() {
+			return {
+				activate: function() {
+					setupPlot(["files", "date"], "tsline")
+				},
+				deactivate: function() {
+					ui.filter.onchange = undefined;
+					ui.filter.show(false);
+				}
+			}
+		},
+		lines: function() {
+			return {
+				activate: function() {
+					setupPlot(["lines", "date"], "tsline")
+				},
+				deactivate: function() {
+					ui.filter.onchange = undefined;
+					ui.filter.show(false);
+				}
+			}
+		},
+		changes: function() {
+			return {
+				activate: function() {
+				},
+				deactivate: function() {
+				}
+			}
+		}
+	}
+
+	var activateFunctions = {};
+	for (fun in fn) {
+		var functions = fn[fun]();
+		activateFunctions[fun] = (function (functions) {
+			return function() {
+				if (deactivate !== undefined) {
+					deactivate();
+				}
+				deactivate = functions.deactivate;
+				return functions.activate();
+			}
+		}(functions));
+	}
+	return activateFunctions;
+}(ui));
 
 var stateTransitions = {
 	tab: function(value) {
@@ -427,9 +514,7 @@ var stateTransitions = {
 			'lines': 'Lines',
 			'changes': 'Changes'
 		}
-		setPageHeader(titleLabels[value]);
-		filterShow(false);
-		updateFilter();
+		ui.page.setPageHeader(titleLabels[value]);
 		var sidebar = document.getElementById('sidebar');
 		var sidebarLinks = sidebar.getElementsByTagName('A');
 		for (var i = 0, len = sidebarLinks.length; i < len; i++) {
@@ -438,9 +523,9 @@ var stateTransitions = {
 				setActiveClass(sidebarLinks[i]);
 			}
 		}
-		pageBody.innerHTML = '';
+		ui.page.clearBody();
 
-		tabActivateFunctions[value]();
+		tabTransitionFunctions[value]();
 	}
 };
 
@@ -481,12 +566,6 @@ var setActiveClass = function(node) {
 		}
 	}
 }
-
-/*
-var selector = new Selector(data);
-var result = selector.select("date", undefined, "files").materialize();
-console.log(result);
-*/
 
 var registerLinks = function(container) {
 	var links = container.getElementsByTagName('A');
