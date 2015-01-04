@@ -1,0 +1,58 @@
+$retina: "(-webkit-min-device-pixel-ratio: 1.5), (min--moz-device-pixel-ratio: 1.5), (-o-min-device-pixel-ratio: 3/2), (min-device-pixel-ratio: 1.5), (min-resolution: 1.5dppx)";
+
+@mixin image2x($image, $width, $height) {
+	@media #{$retina} {
+		background-image: url($image);
+		background-size: $width $height;
+	}
+}
+
+@mixin generate-checkbox-offsets($cb_off) {
+	li:not(#foo) > input[type=checkbox] + label:before                 { background-position: 0px  0*$cb_off; }
+	li:not(#foo) > input[type=checkbox] + label:hover::before          { background-position: 0px  1*$cb_off; }
+	li:not(#foo) > input[type=checkbox] + label:active::before         { background-position: 0px  2*$cb_off; }
+	li:not(#foo) > input[type=checkbox]:checked + label:before         { background-position: 0px  4*$cb_off; }
+	li:not(#foo) > input[type=checkbox]:checked + label:hover::before  { background-position: 0px  5*$cb_off; }
+	li:not(#foo) > input[type=checkbox]:checked + label:active::before { background-position: 0px  6*$cb_off; }
+
+	li:not(#foo) > input[type=radio] + label:before                    { background-position: 0px  8*$cb_off; }
+	li:not(#foo) > input[type=radio] + label:hover::before             { background-position: 0px  9*$cb_off; }
+	li:not(#foo) > input[type=radio] + label:active::before            { background-position: 0px 10*$cb_off; }
+	li:not(#foo) > input[type=radio]:checked + label:before            { background-position: 0px 12*$cb_off; }
+	li:not(#foo) > input[type=radio]:checked + label:hover::before     { background-position: 0px 13*$cb_off; }
+	li:not(#foo) > input[type=radio]:checked + label:active::before    { background-position: 0px 14*$cb_off; }
+
+	li:not(#foo).checkbox > input[type=radio] + label:before                    { background-position: 0px  0*$cb_off; }
+	li:not(#foo).checkbox > input[type=radio] + label:hover::before             { background-position: 0px  1*$cb_off; }
+	li:not(#foo).checkbox > input[type=radio] + label:active::before            { background-position: 0px  2*$cb_off; }
+	li:not(#foo).checkbox > input[type=radio]:checked + label:before            { background-position: 0px  4*$cb_off; }
+	li:not(#foo).checkbox > input[type=radio]:checked + label:hover::before     { background-position: 0px  5*$cb_off; }
+	li:not(#foo).checkbox > input[type=radio]:checked + label:active::before    { background-position: 0px  6*$cb_off; }
+
+	li:not(#foo).radio > input[type=checkbox] + label:before                 { background-position: 0px  8*$cb_off; }
+	li:not(#foo).radio > input[type=checkbox] + label:hover::before          { background-position: 0px  9*$cb_off; }
+	li:not(#foo).radio > input[type=checkbox] + label:active::before         { background-position: 0px 10*$cb_off; }
+	li:not(#foo).radio > input[type=checkbox]:checked + label:before         { background-position: 0px 12*$cb_off; }
+	li:not(#foo).radio > input[type=checkbox]:checked + label:hover::before  { background-position: 0px 13*$cb_off; }
+	li:not(#foo).radio > input[type=checkbox]:checked + label:active::before { background-position: 0px 14*$cb_off; }
+}
+
+@mixin checkboxes($file, $type, $imageWidth, $imageHeight, $btnOffset) {
+	li:not(#foo) > input[type=checkbox], li:not(#foo) > input[type=radio] {
+		position: absolute;
+		float: left;
+		left: 0;
+		opacity: 0;
+	}
+
+	li:not(#foo) > input[type=checkbox] + label:before, li:not(#foo) > input[type=radio] + label:before
+	{
+		vertical-align: middle;
+		content: "";
+		background: url($file + $type) 0px 0px no-repeat;
+		display: inline-block;
+		@include image2x($file + "@2x" + $type, $imageWidth, $imageHeight);
+	}
+
+	@include generate-checkbox-offsets(-$btnOffset);
+}

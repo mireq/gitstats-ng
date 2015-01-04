@@ -19,15 +19,26 @@ var createArray = function(length) {
 var Filter = function() {
 	this._selector = new Selector(data);
 	this._selectorQuery = [];
+	this._select = null;
+	this._columns = [];
+	this._filterId = 0;
 
-	this._hdr = document.createElement('H4');
-	this._hdr.innerHTML = 'Filter';
+	this._htmlRow = document.createElement('div');
+	this._htmlRow.className = 'row filter';
 
 	this.onchange = undefined;
 
 	var filterBody = document.getElementById("filter");
 	filterBody.innerHTML = '';
-	filterBody.appendChild(this._hdr);
+	filterBody.appendChild(this._htmlRow);
+
+	var toFlatStats = function(stats) {
+		var out = createArray(stats.data.length);
+		stats.data.forEach(function(item) {
+			out[parseInt(item[0])] = item[1];
+		});
+		return out;
+	}
 
 	this.show = function(show) {
 		if (show === undefined || show === true) {
@@ -41,10 +52,82 @@ var Filter = function() {
 
 	this.setup = function(selectorQuery) {
 		this._selectorQuery = selectorQuery;
+		this._select = null;
+		this._columns = [];
+		this._htmlRow.innerHTML = '';
+
+		var authors = this.select().authors();
+		var authorsStats = toFlatStats(this._selector.select(this._selectorQuery[0], 'author').materialize());
+		var authorsData = [];
+		authors.forEach(function(author, idx) {
+			authorsData.push({
+				'id': idx,
+				'label': author[0] + ' <' + author[1] + '>',
+				'email': author[1],
+				'value': authorsStats[idx]
+			});
+		});
+
+		this.setupColumn({
+			'label': 'Authors',
+			'column': 'authors',
+			'values': authorsData
+		});
 	}
 
 	this.select = function() {
-		return this._selector.select(this._selectorQuery[0], this._selectorQuery[1], this._selectorQuery[2]);
+		if (this._select === null) {
+			this._select = this._selector.select(this._selectorQuery[0], this._selectorQuery[1], this._selectorQuery[2]);
+		}
+		return this._select;
+	}
+
+	this.setupColumn = function(options) {
+		var that = this;
+		this._columns.push(options);
+		var label = options.label;
+		var column = options.column;
+		var values = options.values;
+
+		options.htmlColumn = document.createElement('DIV');
+		this._htmlRow.appendChild(options.htmlColumn);
+		var header = document.createElement('H4');
+		var headerText = document.createTextNode(label);
+		header.appendChild(headerText);
+		options.htmlColumn.appendChild(header);
+
+		values.sort(function(a, b) { return b.value - a.value });
+
+		var list = document.createElement('UL');
+		values.forEach(function(value) {
+			that._filterId++;
+			var generatedId = "filter_" + that._filterId;
+			var listItem = document.createElement('LI');
+			list.appendChild(listItem);
+
+			var input = document.createElement('INPUT');
+			input.setAttribute('type', 'radio');
+			input.setAttribute('id', generatedId);
+			input.setAttribute('value', value.id);
+			input.setAttribute('name', options.column);
+			listItem.appendChild(input);
+
+			var label = document.createElement('LABEL');
+			label.setAttribute('for', generatedId);
+			listItem.appendChild(label);
+
+			if (value.value !== undefined) {
+				var valueSpan = document.createElement('SPAN');
+				valueSpan.className = 'value';
+				var valueText = document.createTextNode('(' + value.value + ')');
+				valueSpan.appendChild(valueText);
+				label.appendChild(valueSpan);
+			}
+
+			var labelText = document.createTextNode(value.label);
+			label.appendChild(labelText);
+		});
+		options.htmlColumn.appendChild(list);
 	}
 
 	this._trigger_onchange = function() {
@@ -129,13 +212,33 @@ var Selector = function(data) {
 		selector._value = value;
 		selector._axisX = axisX;
 		selector._axisY = axisY;
+		selector._cache = null;
 		return selector;
+	}
+
+	this.authors = function() {
+		if (this._cache === null) this.materialize();
+		return this._cache.authors;
+	}
+
+	this.projects = function() {
+		if (this._cache === null) this.materialize();
+		return this._cache.projects;
+	}
+
+	this.extensions = function() {
+		if (this._cache === null) this.materialize();
+		return this._cache.extensions;
 	}
 
 	this.materialize = function() {
 		var that = this;
 
-		that._cache = { authors: [], projects: [], extensions: [] };
+		if (that._cache !== null) {
+			return that._cache.data;
+		}
+
+		that._cache = { authors: [], projects: [], extensions: [], data: [] };
 
 		var getAxisFn = function(axis) {
 			if (axis === undefined) {
@@ -355,7 +458,8 @@ var Selector = function(data) {
 			});
 		});
 
-		return that._transform(collected);
+		that._cache.data = that._transform(collected);
+		return that._cache.data;
 	}
 }
 

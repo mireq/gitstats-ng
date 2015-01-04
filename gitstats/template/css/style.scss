@@ -10,6 +10,7 @@ $border-color: $body-bg;
 	"foundation/scss/foundation/components/type",
 	"foundation/scss/foundation/components/icon-bar";
 
+@import "checkboxes";
 @import "scroll";
 
 html, body {
@@ -86,4 +87,33 @@ body > header {
 	> .item.active {
 		background: #008CBA !important;
 	}
+}
+
+.filter {
+	ul {
+		list-style: none;
+		padding: 0;
+		margin: 0;
+		li {
+			padding: 0;
+			margin: 0;
+		}
+	}
+
+	.value {
+		float: right;
+	}
+}
+
+@include checkboxes(
+	'../img/checkboxes',
+	'.png',
+	20px, 320px,
+	20px
+);
+
+li:not(#foo) > input[type=checkbox] + label:before, li:not(#foo) > input[type=radio] + label:before {
+	width: 20px; height: 20px;
+	margin-right: 8px;
+	margin-top: -2px;
 }
