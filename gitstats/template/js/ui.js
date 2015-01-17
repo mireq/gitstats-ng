@@ -295,6 +295,10 @@ var Selector = function(data) {
 					return function(data) {
 						return data.data[3];
 					}
+				case 'changed':
+					return function(data) {
+						return data.data[2] + data.data[3];
+					}
 			}
 		}
 		var getReductFn = function(type, valueFn) {
@@ -587,8 +591,11 @@ var tabTransitionFunctions = (function (ui) {
 		changes: function() {
 			return {
 				activate: function() {
+					setupPlot(["changed", "date"], "ts")
 				},
 				deactivate: function() {
+					ui.filter.onchange = undefined;
+					ui.filter.show(false);
 				}
 			}
 		}
