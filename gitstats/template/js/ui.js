@@ -324,7 +324,7 @@ var Selector = function(data) {
 							}
 
 							data.forEach(function(item) {
-								projectValues[item.project][extensionIds[item.extension]][yAxis] = valueFn(item);
+								projectValues[item.project][extensionIds[item.extension]][yAxis] = item.value;
 							});
 							var sum = 0;
 							projectValues.forEach(function(arr, projectId) {
@@ -342,7 +342,7 @@ var Selector = function(data) {
 						return function(data) {
 							var val = 0;
 							data.forEach(function(data) {
-								val += valueFn(data);
+								val += data.value;
 							});
 							return val;
 						}
@@ -425,6 +425,7 @@ var Selector = function(data) {
 						date: date,
 						data: extensionData
 					}
+					data.value = valueFn(data);
 					var xAxis = xAxisFn(data);
 					var yAxis = yAxisFn(data);
 
