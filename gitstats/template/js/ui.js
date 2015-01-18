@@ -258,6 +258,11 @@ var Selector = function(data) {
 						return data.author;
 					}
 					break;
+				case 'addedremoved':
+					return function(data) {
+						return (data.index === 0) ? '+' : '-';
+					}
+					break;
 			}
 		}
 		var getSortFn = function(axis) {
@@ -298,6 +303,10 @@ var Selector = function(data) {
 				case 'changed':
 					return function(data) {
 						return data.data[2] + data.data[3];
+					}
+				case 'addedremoved':
+					return function(data) {
+						return [data.data[2], data.data[3]];
 					}
 			}
 		}
@@ -426,12 +435,30 @@ var Selector = function(data) {
 						data: extensionData
 					}
 					data.value = valueFn(data);
-					var xAxis = xAxisFn(data);
-					var yAxis = yAxisFn(data);
 
-					xAxis in collected || (collected[xAxis] = {});
-					yAxis in collected[xAxis] || (collected[xAxis][yAxis] = []);
-					collected[xAxis][yAxis].push(data);
+					var collect = function(data) {
+						var xAxis = xAxisFn(data);
+						var yAxis = yAxisFn(data);
+
+						xAxis in collected || (collected[xAxis] = {});
+						yAxis in collected[xAxis] || (collected[xAxis][yAxis] = []);
+						collected[xAxis][yAxis].push(data);
+					}
+
+					if (isArray(data.value)) {
+						data.value.forEach(function(val, idx) {
+							var copy = {};
+							for (var key in data) {
+								copy[key] = data[key];
+							}
+							copy.value = val;
+							copy.index = idx;
+							collect(copy);
+						});
+					}
+					else {
+						collect(data);
+					}
 				});
 			});
 		});
@@ -592,7 +619,7 @@ var tabTransitionFunctions = (function (ui) {
 		changes: function() {
 			return {
 				activate: function() {
-					setupPlot(["changed", "date"], "ts")
+					setupPlot(["addedremoved", "date", "addedremoved"], "ts")
 				},
 				deactivate: function() {
 					ui.filter.onchange = undefined;
