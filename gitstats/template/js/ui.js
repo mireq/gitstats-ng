@@ -22,6 +22,7 @@ var Filter = function() {
 	this._select = null;
 	this._columns = [];
 	this._filterId = 0;
+	this._filters = {};
 
 	this._htmlRow = document.createElement('div');
 	this._htmlRow.className = 'row filter';
@@ -78,6 +79,11 @@ var Filter = function() {
 	this.select = function() {
 		if (this._select === null) {
 			this._select = this._selector.select(this._selectorQuery[0], this._selectorQuery[1], this._selectorQuery[2]);
+			for (var key in this._filters) {
+				if (this._filters[key] !== undefined) {
+					this._select.filter(key, this._filters[key]);
+				}
+			}
 		}
 		return this._select;
 	}
@@ -99,6 +105,7 @@ var Filter = function() {
 		values.sort(function(a, b) { return b.value - a.value });
 
 		var list = document.createElement('UL');
+		var inputs = [];
 		values.forEach(function(value) {
 			that._filterId++;
 			var generatedId = "filter_" + that._filterId;
@@ -106,10 +113,23 @@ var Filter = function() {
 			list.appendChild(listItem);
 
 			var input = document.createElement('INPUT');
+			inputs.push(input);
 			input.setAttribute('type', 'radio');
 			input.setAttribute('id', generatedId);
 			input.setAttribute('value', value.id);
 			input.setAttribute('name', options.column);
+			input.onchange = function() {
+				that._filters[column] = [];
+				inputs.forEach(function(input) {
+					if (input.checked) {
+						that._filters[column].push(parseInt(input.getAttribute('value')));
+					}
+				});
+				if (that._filters[column].length === 0) {
+					that._filters[column] = undefined;
+				}
+				that._trigger_onchange();
+			};
 			listItem.appendChild(input);
 
 			var label = document.createElement('LABEL');
@@ -131,6 +151,7 @@ var Filter = function() {
 	}
 
 	this._trigger_onchange = function() {
+		this._select = null;
 		if (this.onchange !== undefined) {
 			this.onchange();
 		}
@@ -172,6 +193,7 @@ var Selector = function(data) {
 	this._axisX = null;
 	this._axisY = null;
 	this._value = null;
+	this._filter = null;
 
 	this._transform = function(collected) {
 		var that = this;
@@ -213,6 +235,7 @@ var Selector = function(data) {
 		selector._axisX = axisX;
 		selector._axisY = axisY;
 		selector._cache = null;
+		selector._filter = [];
 		return selector;
 	}
 
@@ -229,6 +252,10 @@ var Selector = function(data) {
 	this.extensions = function() {
 		if (this._cache === null) this.materialize();
 		return this._cache.extensions;
+	}
+
+	this.filter = function(name, value) {
+		this._filter.push([name, value]);
 	}
 
 	this.materialize = function() {
@@ -375,11 +402,41 @@ var Selector = function(data) {
 			}
 		}
 
+		var getFilterFn = function(filter) {
+			var fn = function(data) { return true; };
+			var filterFunctions = [];
+			filter.forEach(function(filterInstance) {
+				var filterName = filterInstance[0];
+				var filterArgument = filterInstance[1];
+				var filterNextChain = undefined;
+				switch (filterName) {
+					case 'authors':
+						filterNextChain = function(data) {
+							return filterArgument.indexOf(data.author) !== -1;
+						}
+						break;
+				}
+				filterFunctions.push(filterNextChain);
+			});
+			if (filterFunctions) {
+				return function(data) {
+					for (var i = 0, leni = filterFunctions.length; i < leni; i++) {
+						if (!filterFunctions[i](data)) {
+							return false;
+						}
+					}
+					return true;
+				}
+			}
+			return fn;
+		}
+
 		var xAxisFn = getAxisFn(that._axisX);
 		var yAxisFn = getAxisFn(that._axisY);
 		var valueFn = getValueFn(that._value);
 		var xSortFn = getSortFn(that._axisX);
 		var ySortFn = getSortFn(that._axisY);
+		var filterFn = getFilterFn(that._filter);
 		var reduceFn = '';
 		switch (that._value) {
 			case 'files':
@@ -397,6 +454,19 @@ var Selector = function(data) {
 		var collected = {};
 
 		var cacheAuthors = [];
+
+		var record = function(data) {
+			if (!filterFn(data)) {
+				return;
+			}
+
+			var xAxis = xAxisFn(data);
+			var yAxis = yAxisFn(data);
+
+			xAxis in collected || (collected[xAxis] = {});
+			yAxis in collected[xAxis] || (collected[xAxis][yAxis] = []);
+			collected[xAxis][yAxis].push(data);
+		}
 
 		that.data.forEach(function(project, projectId) {
 			var projectName = project[0];
@@ -436,15 +506,6 @@ var Selector = function(data) {
 					}
 					data.value = valueFn(data);
 
-					var collect = function(data) {
-						var xAxis = xAxisFn(data);
-						var yAxis = yAxisFn(data);
-
-						xAxis in collected || (collected[xAxis] = {});
-						yAxis in collected[xAxis] || (collected[xAxis][yAxis] = []);
-						collected[xAxis][yAxis].push(data);
-					}
-
 					if (isArray(data.value)) {
 						data.value.forEach(function(val, idx) {
 							var copy = {};
@@ -453,11 +514,11 @@ var Selector = function(data) {
 							}
 							copy.value = val;
 							copy.index = idx;
-							collect(copy);
+							record(copy);
 						});
 					}
 					else {
-						collect(data);
+						record(data);
 					}
 				});
 			});
@@ -575,7 +636,7 @@ var tabTransitionFunctions = (function (ui) {
 				graph = new Dygraph(plot, opts.file, opts);
 			}
 			else {
-				graph.update(opts);
+				graph.updateOptions(opts);
 			}
 		}
 		ui.filter.show();
